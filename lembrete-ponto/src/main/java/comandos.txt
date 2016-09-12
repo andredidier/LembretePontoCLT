@@ -1,0 +1,3 @@
+definirregime - Define o regime 6 ou 8h
+registrar - Registra uma batida
+regime - Consulta o regime
