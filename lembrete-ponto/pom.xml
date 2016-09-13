@@ -31,7 +31,7 @@
 			<groupId>com.github.rubenlagus</groupId>
 			<artifactId>TelegramBots</artifactId>
 			<version>v2.3.5</version>
-			
+
 		</dependency>
 		<dependency>
 			<groupId>log4j</groupId>
@@ -50,17 +50,72 @@
 					<downloadSources>true</downloadSources>
 				</configuration>
 			</plugin>
-			<!-- 
+			<plugin>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<configuration>
+					<archive>
+						<manifest>
+							<mainClass>clt.lembreteponto.App</mainClass>
+						</manifest>
+					</archive>
+					<descriptorRefs>
+						<descriptorRef>jar-with-dependencies</descriptorRef>
+					</descriptorRefs>
+				</configuration>
+				<executions>
+					<execution>
+						<id>make-assembly</id> <!-- this is used for inheritance merges -->
+						<phase>package</phase> <!-- bind to the packaging phase -->
+						<goals>
+							<goal>single</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<!-- <plugin> <groupId>org.apache.maven.plugins</groupId> <artifactId>maven-compiler-plugin</artifactId> 
+				<version>3.5.1</version> <configuration> <source>1.5</source> <target>1.5</target> 
+				</configuration> </plugin> -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.5.1</version>
+				<!-- documentation: https://maven.apache.org/plugins/maven-jar-plugin/jar-mojo.html -->
+				<artifactId>maven-jar-plugin</artifactId>
 				<configuration>
-					<source>1.5</source>
-					<target>1.5</target>
+					<!-- custom output directory -->
+					<outputDirectory>${project.build.directory}/jarDir</outputDirectory>
+					<!-- custom Name of the generated JAR (default: ${project.build.finalName} 
+						e.g. de.oveits.provisioningengine_recent-0.5.2.21_stable). Note, that .jar 
+						is always appended -->
+					<finalName>lembrete-ponto</finalName>
+					<archive>
+						<manifest>
+							<addClasspath>true</addClasspath>
+							<mainClass>clt.lembreteponto.App</mainClass>
+							<classpathPrefix>lib/</classpathPrefix>
+						</manifest>
+					</archive>
 				</configuration>
 			</plugin>
-			 -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<version>2.5.1</version>
+				<executions>
+					<execution>
+						<id>copy-dependencies</id>
+						<phase>package</phase>
+						<goals>
+							<goal>copy-dependencies</goal>
+						</goals>
+						<configuration>
+							<!-- exclude junit, we need runtime dependency only -->
+							<includeScope>runtime</includeScope>
+							<!-- custom output directory -->
+							<outputDirectory>${project.build.directory}/jarDir/lib/</outputDirectory>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
 		</plugins>
+
 	</build>
 </project>
