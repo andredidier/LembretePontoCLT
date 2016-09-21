@@ -7,7 +7,9 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -19,8 +21,7 @@ import org.apache.commons.logging.LogFactory;
 public class RepositorioLembreteMemoria implements IRepositorioLembretes {
 	private Map<Long, Usuario> conversas = new TreeMap<Long, Usuario>();
 	private Map<Long, String> comandos = new HashMap<Long, String>();
-	private Map<Long, Date> inicios = new HashMap<Long, Date>();
-	private Map<Long, Long> saldos = new HashMap<Long, Long>();
+	private Map<Long, Set<Date>> datas = new HashMap<Long, Set<Date>>();
 	private static Log log = LogFactory
 			.getLog(RepositorioLembreteMemoria.class);
 
@@ -73,33 +74,16 @@ public class RepositorioLembreteMemoria implements IRepositorioLembretes {
 		comandos.remove(chatId);
 	}
 
-	public Map<Date, TipoAlerta> registrar(long chatId, Date ponto) {
-		Map<Date, TipoAlerta> alertas = new HashMap<Date, TipoAlerta>();
+	public void registrar(long chatId, Date ponto) {
 		log.debug("Registrar: " + chatId);
-		long saldo = 0;
-		if (saldos.containsKey(chatId)) {
-			saldo = saldos.get(chatId);
-			log.debug("Saldo: " + saldo);
-		}
-		if (inicios.containsKey(chatId)) {
-			Date inicio = inicios.remove(chatId);
-			if (isMesmoDia(inicio, ponto)) {
-				log.debug("Mesmo dia");
-				saldo += ponto.getTime() - inicio.getTime();
-				saldos.put(chatId, saldo);
-			} else {
-				log.debug("Dias diferentes");
-				saldos.remove(chatId);
-			}
-			acrescentarAlertasEntrada(conversas.get(chatId).getRegime(), ponto,
-					alertas, saldo);
+		Set<Date> registros;
+		if (datas.containsKey(chatId)) {
+			registros = datas.get(chatId);
 		} else {
-			inicios.put(chatId, ponto);
-			acrescentarAlertasSaida(conversas.get(chatId).getRegime(), ponto,
-					alertas, saldo);
+			registros = new TreeSet<Date>();
+			datas.put(chatId, registros);
 		}
-
-		return alertas;
+		registros.add(ponto);
 	}
 
 	private boolean isMesmoDia(Date dia1, Date dia2) {
@@ -157,5 +141,38 @@ public class RepositorioLembreteMemoria implements IRepositorioLembretes {
 			alertas.put(tPonto1.getTime(), TipoAlerta.SaidaMinima);
 			alertas.put(tPonto2.getTime(), TipoAlerta.SaidaMaxima);
 		}
+	}
+
+	public Alerta proximoAlerta(long chatId, Date data) {
+		// FIXME ESTÁ ERRADO!!!
+		Set<Date> registros;
+		if (!datas.containsKey(chatId)) {
+			log.debug("Registros não encontrados para " + chatId);
+			return null;
+		}
+
+		registros = datas.get(chatId);
+		Date minima = null;
+		boolean eSaida = registros.size() % 2 == 1;
+		for (Date d : registros) {
+			if (minima == null || (d.after(data) && d.before(minima))) {
+				minima = d;
+				log.debug("Nova data mínima: " + minima);
+			}
+		}
+		if (minima == null) {
+			log.debug("Data mínima nula");
+			return null;
+		}
+		Calendar c = Calendar.getInstance();
+		c.setTime(minima);
+		c.set(Calendar.SECOND, 0);
+		if (eSaida) {
+			c.add(Calendar.MINUTE, -5);
+		}
+		log.debug("Próximo alerta: " + c.getTime());
+		Alerta a = new Alerta();
+		a.setHorario(c.getTime());
+		return a;
 	}
 }

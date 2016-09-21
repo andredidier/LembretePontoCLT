@@ -4,7 +4,6 @@
 package clt.lembreteponto;
 
 import java.util.Date;
-import java.util.Map;
 
 /**
  * @author andre
@@ -31,6 +30,8 @@ public interface IRepositorioLembretes {
 
 	void concluirComando(long chatId);
 
-	Map<Date, TipoAlerta> registrar(long chatId, Date time);
+	void registrar(long chatId, Date time);
+
+	Alerta proximoAlerta(long chatId, Date data);
 
 }

@@ -37,7 +37,7 @@ public class LembretePontoBot extends TelegramLongPollingBot implements
 	private static Log log = LogFactory.getLog(LembretePontoBot.class);
 	private ResourceBundle bundle = ResourceBundle.getBundle("Language");
 	private Map<String, Comando> comandos;
-	private Map<Long, ProcessadorAlertas> processadoresAlertas = new HashMap<Long, ProcessadorAlertas>();
+	private Map<Long, Thread> processadoresAlertas = new HashMap<Long, Thread>();
 
 	private boolean i18nBoolean(String key, Object... params) {
 		if (bundle.containsKey(key)) {
@@ -171,17 +171,24 @@ public class LembretePontoBot extends TelegramLongPollingBot implements
 			dataASalvar.set(Calendar.SECOND, 0);
 			dataASalvar.set(Calendar.MILLISECOND, 0);
 
-			Map<Date, TipoAlerta> alertas = repositorio.registrar(
-					message.getChatId(), dataASalvar.getTime());
-			if (processadoresAlertas.containsKey(message.getChatId())) {
-				processadoresAlertas.get(message.getChatId()).cancelar();
-			}
-			if (!alertas.isEmpty()) {
-				ProcessadorAlertas pa = new ProcessadorAlertas(this,
-						message.getChatId(), alertas);
-				processadoresAlertas.put(message.getChatId(), pa);
-				new Thread(pa, "ProcessadorAlertas-" + message.getChatId())
-						.start();
+			repositorio.registrar(message.getChatId(), dataASalvar.getTime());
+			synchronized (processadoresAlertas) {
+				Thread existingThread = null;
+				if (processadoresAlertas.containsKey(message.getChatId())) {
+					Thread t = processadoresAlertas.get(message.getChatId());
+					if (t.isAlive()) {
+						existingThread = t;
+					}
+				}
+
+				if (existingThread == null) {
+					ProcessadorAlertas pa = new ProcessadorAlertas(this,
+							message.getChatId());
+					Thread t = new Thread(pa, "ProcessadorAlertas-"
+							+ message.getChatId());
+					processadoresAlertas.put(message.getChatId(), t);
+					t.start();
+				}
 			}
 		} catch (ParseException e) {
 			log.error("processarRegistro - erro", e);
@@ -338,6 +345,18 @@ public class LembretePontoBot extends TelegramLongPollingBot implements
 			sendMessage(sm);
 		} catch (TelegramApiException e) {
 			log.warn("Erro ao informar próximo alerta", e);
+		}
+	}
+
+	public Alerta obterProximoAlerta(long chatId) {
+		synchronized (processadoresAlertas) {
+			return repositorio.proximoAlerta(chatId, new Date());
+		}
+	}
+
+	public void cancelarAlertas(long chatId) {
+		synchronized (processadoresAlertas) {
+			processadoresAlertas.remove(chatId);
 		}
 	}
 
